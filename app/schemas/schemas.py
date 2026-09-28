@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict
+from decimal import Decimal
 
 
 class UserBase(BaseModel):
@@ -33,5 +34,43 @@ class RestaurantUpdate(RestaurantBase):
 class RestaurantResponse(RestaurantBase):
     id: int
     owner_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+class MenuCategoryCreate(BaseModel):
+    name: str
+
+class MenuCategoryUpdate(BaseModel):
+    name: str | None = None
+
+
+class MenuCategoryResponse(BaseModel):
+    id: int
+    name: str
+    restaurant_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+class MenuItemCreate(BaseModel):
+    name: str
+    description: str | None = None
+    price: Decimal
+    is_available: bool = True
+
+
+class MenuItemUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    price: Decimal | None = None
+    is_available: bool | None = None
+
+
+class MenuItemResponse(BaseModel):
+    id: int
+    name: str
+    description: str | None
+    price: Decimal
+    is_available: bool
+    category_id: int
 
     model_config = ConfigDict(from_attributes=True)

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from decimal import Decimal
-
+from datetime import datetime
+from app.db.models.order import OrderStatus
 
 class UserBase(BaseModel):
     name: str
@@ -74,3 +75,36 @@ class MenuItemResponse(BaseModel):
     category_id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+class OrderItemCreate(BaseModel):
+    menu_item_id: int
+    quantity: int
+
+
+class OrderCreate(BaseModel):
+    restaurant_id: int
+    items: list[OrderItemCreate]
+
+
+class OrderItemResponse(BaseModel):
+    id: int
+    menu_item_id: int
+    quantity: int
+    unit_price: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OrderResponse(BaseModel):
+    id: int
+    customer_id: int
+    restaurant_id: int
+    status: str
+    total_amount: Decimal
+    created_at: datetime
+    items: list[OrderItemResponse]
+
+    model_config = ConfigDict(from_attributes=True)
+
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatus

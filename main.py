@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.routes import auth, users, restaurants, menu_categories, menu_items
+from app.api.routes import auth, users, restaurants, menu_categories, menu_items, orders
 
 
 app = FastAPI(
@@ -13,6 +13,7 @@ app.include_router(restaurants.router)
 app.include_router(menu_categories.router)
 app.include_router(menu_categories.category_router)
 app.include_router(menu_items.router)
+app.include_router(orders.router)
 
 
 @app.get("/")

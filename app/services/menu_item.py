@@ -1,4 +1,3 @@
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.models.menu_item import MenuItem
@@ -7,6 +6,7 @@ from app.repositories.menu_category import MenuCategoryRepository
 from app.repositories.menu_item import MenuItemRepository
 from app.repositories.restaurant import RestaurantRepository
 from app.schemas.schemas import MenuItemCreate, MenuItemUpdate
+from app.core.exceptions import ForbiddenException, NotFoundException
 
 class MenuItemService:
 
@@ -24,10 +24,7 @@ class MenuItemService:
         )
 
         if category is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Category not found",
-            )
+            raise NotFoundException("Category not found")
 
         restaurant = RestaurantRepository.get_by_id(
             db,
@@ -39,9 +36,8 @@ class MenuItemService:
             current_user.role != "SYSTEM_ADMIN"
             and restaurant.owner_id != current_user.id
         ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permissions to manage this menu"
+            raise ForbiddenException(
+                "You do not have permissions to manage this menu"
             )
 
         item = MenuItem(
@@ -61,6 +57,8 @@ class MenuItemService:
     def get_items(
         db: Session,
         category_id: int,
+        skip: int = 0,
+        limit: int = 20,
     ) -> list[MenuItem]:
         
         category = MenuCategoryRepository.get_by_id(
@@ -69,14 +67,13 @@ class MenuItemService:
         )
 
         if category is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Category not found",
-            )
+            raise NotFoundException("Category not found")
 
         return MenuItemRepository.get_by_category(
             db,
             category_id,
+            skip,
+            limit,
         )
 
 
@@ -95,16 +92,10 @@ class MenuItemService:
         )
 
         if item is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Menu item not found",
-            )
+            raise NotFoundException("Menu item not found")
 
         if item.category_id != category_id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Menu item not found in this category",
-            )
+            raise NotFoundException("Menu item not found in this category")
 
         category = MenuCategoryRepository.get_by_id(
             db,
@@ -112,10 +103,7 @@ class MenuItemService:
         )
 
         if category is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Category not found",
-            )
+            raise NotFoundException("Category not found")
 
         restaurant = RestaurantRepository.get_by_id(
             db,
@@ -126,9 +114,8 @@ class MenuItemService:
             current_user.role != "SYSTEM_ADMIN"
             and restaurant.owner_id != current_user.id
         ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to modify this menu item",
+            raise ForbiddenException(
+                "You do not have permission to modify this menu item"
             )
 
         if item_data.name is not None:
@@ -163,17 +150,11 @@ class MenuItemService:
         )
 
         if item is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Menu item not found",
-            )
+            raise NotFoundException("Menu item not found")
 
 
         if item.category_id != category_id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Menu item not found in this category",
-            )
+            raise NotFoundException("Menu item not found in this category")
 
         category = MenuCategoryRepository.get_by_id(
             db,
@@ -181,10 +162,7 @@ class MenuItemService:
         )
 
         if category is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Category not found",
-            )
+            raise NotFoundException("Category not found")
 
         restaurant = RestaurantRepository.get_by_id(
             db,
@@ -195,9 +173,8 @@ class MenuItemService:
             current_user.role != "SYSTEM_ADMIN"
             and restaurant.owner_id != current_user.id
         ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to delete this menu item",
+            raise ForbiddenException(
+                "You do not have permission to delete this menu item"
             )
 
         MenuItemRepository.delete(

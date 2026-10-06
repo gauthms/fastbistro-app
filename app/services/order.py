@@ -1,6 +1,5 @@
 from decimal import Decimal
 
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.models.order import Order, OrderItem, OrderStatus
@@ -9,7 +8,11 @@ from app.repositories.menu_item import MenuItemRepository
 from app.repositories.order import OrderRepository
 from app.repositories.restaurant import RestaurantRepository
 from app.schemas.schemas import OrderCreate, OrderResponse, OrderStatusUpdate
-
+from app.core.exceptions import (
+    BadRequestException,
+    ForbiddenException,
+    NotFoundException,
+)
 
 
 ALLOWED_STATUS_TRANSITIONS = {
@@ -43,10 +46,7 @@ class OrderService:
 
         # Only customers can place orders
         if current_user.role != "CUSTOMER":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only customers can place orders",
-            )
+            raise ForbiddenException("Only customers can place order")
 
         # Check that the repository exists
         restaurant = RestaurantRepository.get_by_id(
@@ -55,11 +55,7 @@ class OrderService:
         )
 
         if restaurant is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Restaurant not found",
-            )
-
+            raise NotFoundException("Restaurant not found")
 
         order = Order(
             customer_id=current_user.id,
@@ -78,31 +74,19 @@ class OrderService:
             )
 
             if menu_item is None:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Menu item {item_data.menu_item_id} not found",
-                )
+                raise NotFoundException(f"Menu item {item_data.menu_item_id} not found")
 
             # Make sure the menu item belongs to this restaurant
             if menu_item.category.restaurant_id != restaurant.id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Menu item does not belong to this restaurant",
-                )
+                raise BadRequestException("Menu item does not belong to this restaurant")
 
             # Check availability
             if not menu_item.is_available:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"{menu_item.name} is currently unavailable",
-                )
+                raise BadRequestException(f"{menu_item.name} is currently unavailable")
 
             # Validate quantity
             if item_data.quantity <= 0:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Quantity must be greater than zero",
-                )
+                raise BadRequestException("Quantity must be greater than zero")
 
             # Calculate item total
             item_total = (
@@ -139,17 +123,13 @@ class OrderService:
         )
 
         if order is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Order not found",
-            )
+            raise NotFoundException("Order not found")
 
         # Customer can only view their own orders
         if current_user.role == "CUSTOMER":
             if order.customer_id != current_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You do not have permission to view this order",
+                raise ForbiddenException(
+                    "You do not have permission to view this order"
                 )
 
         # Restaurant admin can only view orders
@@ -165,9 +145,8 @@ class OrderService:
                 restaurant is None
                 or restaurant.owner_id != current_user.id
             ):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You do not have permission to view this order",
+                raise ForbiddenException(
+                    "You do not have permission to view this order"
                 )
 
         # SYSTEM_ADMIN can view any order
@@ -178,17 +157,18 @@ class OrderService:
     def get_my_orders(
         db: Session,
         current_user: User,
+        skip: int = 0,
+        limit: int = 20,
     ) -> list[Order]:
 
         if current_user.role != "CUSTOMER":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only customers can access this endpoint",
-            )
+            raise ForbiddenException("Only customers can access this endpoint")
 
         return OrderRepository.get_by_customer(
             db,
             current_user.id,
+            skip,
+            limit,
         )
 
     @staticmethod
@@ -205,17 +185,12 @@ class OrderService:
         )
 
         if order is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Order not found",
-            )
+            raise NotFoundException("Order not found")
+
 
         # Customers cannot change order status
         if current_user.role == "CUSTOMER":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Customers cannot update order status",
-            )
+            raise ForbiddenException("Customers cannot update order status")
 
         # Restaurant admins can only manage orders
         # belonging to their restaurant
@@ -230,10 +205,7 @@ class OrderService:
                 restaurant is None
                 or restaurant.owner_id != current_user.id
             ):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You do not have permission to update this order",
-                )
+                raise ForbiddenException("You do not have permission to update this order")
 
         new_status = status_data.status
 
@@ -243,19 +215,10 @@ class OrderService:
         )
         current_status = order.status
 
-        if new_status not in allowed_statuses.get(
-            current_status,
-            [],
-        ):
+        if new_status not in allowed_statuses:
             # System admin is allowed to bypass the normal workflow
             if current_user.role != "SYSTEM_ADMIN":
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=(
-                        f"Cannot change order status "
-                        f"from {current_status} to {new_status}"
-                    ),
-                )
+                raise BadRequestException(f"Cannot change order status from {current_status} to {new_status.value}")
 
         order.status = new_status
 
@@ -277,33 +240,21 @@ class OrderService:
         )
 
         if order is None:
-                    raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Order not found",
-        )
+                    raise NotFoundException("Order not found")
 
         # Only the customer who placed the order can cancel it
         if (
             current_user.role != "CUSTOMER"
             or order.customer_id != current_user.id
         ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to cancel this order",
-            )
+            raise ForbiddenException("You do not have permission to cancel this order")
 
 
         if order.status not in [
             OrderStatus.PENDING,
             OrderStatus.CONFIRMED,
         ]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    f"Order cannot be cancelled when its status "
-                    f"is {order.status}"
-                )
-            )
+            raise BadRequestException(f"Order cannot be cancelled when its status is {order.status}")
 
         order.status = OrderStatus.CANCELLED
 

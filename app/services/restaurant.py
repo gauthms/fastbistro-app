@@ -1,9 +1,8 @@
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.models.restaurant import Restaurant
 from app.db.models.user import User
-from app.repositories import restaurant
+from app.core.exceptions import ForbiddenException, NotFoundException
 from app.repositories.restaurant import RestaurantRepository
 from app.schemas.schemas import RestaurantCreate, RestaurantUpdate
 
@@ -21,9 +20,8 @@ class RestaurantService:
             "SYSTEM_ADMIN",
             "RESTAURANT_ADMIN",
         ]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to create a restaurant",
+            raise ForbiddenException(
+                "You do not have permission to create a restaurant"
             )
 
         restaurant = Restaurant(
@@ -52,10 +50,7 @@ class RestaurantService:
         )
 
         if restaurant is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Restaurant not found",
-            )
+            raise NotFoundException("Restaurant not found")
 
         return restaurant
 
@@ -76,9 +71,8 @@ class RestaurantService:
             current_user.role != "SYSTEM_ADMIN"
             and restaurant.owner_id != current_user.id
         ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to modify this restaurant",
+            raise ForbiddenException(
+                "You do not have permission to modify this restaurant"
             )
 
         if restaurant_data.name is not None:
@@ -105,9 +99,8 @@ class RestaurantService:
             current_user.role != "SYSTEM_ADMIN"
             and restaurant.owner_id != current_user.id
         ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to delete this restaurant",
+            raise ForbiddenException(
+                "You do not have permission to delete this restaurant"
             )
 
         RestaurantRepository.delete(db, restaurant)

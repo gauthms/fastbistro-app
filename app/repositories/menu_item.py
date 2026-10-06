@@ -29,10 +29,14 @@ class MenuItemRepository:
     def get_by_category(
         db: Session,
         category_id: int,
+        skip: int = 0,
+        limit: int = 20,
     ) -> list[MenuItem]:
         return (
             db.query(MenuItem)
             .filter(MenuItem.category_id == category_id)
+            .offset(skip)
+            .limit(limit)
             .all()
         )
 

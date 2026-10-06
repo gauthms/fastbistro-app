@@ -10,11 +10,17 @@ class OrderRepository:
         db: Session,
         order: Order,
     ) -> Order:
-        db.add(order)
-        db.commit()
-        db.refresh(order)
+        try:
+            db.add(order)
+            db.commit()
+            db.refresh(order)
 
-        return order
+            return order
+
+        except:
+            db.rollback()
+            raise
+            
 
     @staticmethod
     def get_by_id(
@@ -31,10 +37,15 @@ class OrderRepository:
     def get_by_customer(
         db: Session,
         customer_id: int,
+        skip: int = 0,
+        limit: int = 20,
     ) -> list[Order]:
         return (
             db.query(Order)
             .filter(Order.customer_id == customer_id)
+            .order_by(Order.created_at.desc())
+            .offset(skip)
+            .limit(limit)
             .all()
         )
 
@@ -42,10 +53,15 @@ class OrderRepository:
     def get_by_restaurant(
         db: Session,
         restaurant_id: int,
+        skip: int = 0,
+        limit: int = 20,
     ) -> list[Order]:
         return (
             db.query(Order)
             .filter(Order.restaurant_id == restaurant_id)
+            .order_by(Order.created_at.desc())
+            .offset(skip)
+            .limit(limit)
             .all()
         )
 
@@ -54,7 +70,12 @@ class OrderRepository:
         db: Session,
         order: Order,
     ) -> Order:
-        db.commit()
-        db.refresh(order)
 
-        return order
+        try:
+            db.commit()
+            db.refresh(order)
+
+            return order
+        except Exception:
+            db.rollback()
+            raise

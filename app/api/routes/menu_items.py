@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
@@ -43,11 +43,22 @@ def create_item(
 )
 def get_items(
     category_id: int,
+    skip: int = Query(
+        default=0,
+        ge=0,
+    ),
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=100,
+    ),
     db: Session = Depends(get_db),
 ):
     return MenuItemService.get_items(
         db,
         category_id,
+        skip,
+        limit,
     )
 
 

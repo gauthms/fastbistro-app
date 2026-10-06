@@ -1,9 +1,10 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
 from app.db.models.user import User
 from app.core.auth import get_current_user
+from app.core.exceptions import ForbiddenException, NotFoundException
 from app.db.database import get_db
 from app.db.models.restaurant import Restaurant
 
@@ -13,9 +14,8 @@ def require_role(required_role: str):
         current_user: User = Depends(get_current_user),
     ):
         if current_user.role != required_role:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to perform this action",
+            raise ForbiddenException(
+                "You do not have permission to perform this action"
             )
 
         return current_user
@@ -35,10 +35,7 @@ def require_restaurant_access(
     )
 
     if restaurant is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Restaurant not found",
-        )
+        raise NotFoundException("Restaurant not found")
 
     if current_user.role == "SYSTEM_ADMIN":
         return restaurant
@@ -49,9 +46,8 @@ def require_restaurant_access(
     ):
         return restaurant
 
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="You do not have permission to access this restaurant",
+    raise ForbiddenException(
+        "You do not have permission to access this restaurant"
     )
 
 

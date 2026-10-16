@@ -4,6 +4,11 @@ A RESTful backend API for a restaurant ordering platform, built with **Python, F
 
 The project implements authentication, role-based access control, restaurant and menu management, order processing, status workflows, database migrations, automated testing, and Docker-based deployment.
 
+## 🚀 Live Demo
+
+- **Live API Documentation (Swagger UI):** [Explore FastBistro API](https://fastbistro-app.onrender.com/docs)
+- **Deployment Platform:** Render
+
 ## Features
 
 - JWT-based authentication
@@ -276,9 +281,7 @@ The order test suite covers core scenarios including:
 
 Potential future improvements include:
 
-- CI/CD pipeline
 - Automated Docker image publishing
-- Production deployment
 - Refresh tokens
 - Rate limiting
 - Structured logging
